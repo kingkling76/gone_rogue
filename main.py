@@ -1,123 +1,95 @@
 import pygame
 import random
 from matrix_rain import MatrixRain  # Import the Matrix effect
+from player import Player
+from player import Fireball
+from player import Doppelganger
+from upgrade import MatrixAbilitySystem
 
-def run_game():
-    pygame.init()
+class Game:
+    def __init__(self):
+        pygame.init()
+        self.screen = pygame.display.set_mode((800, 600))
+        self.clock = pygame.time.Clock()
+        
+        # Load images
+        self.walk_sprite_sheet = pygame.image.load("Walk.png").convert_alpha()
+        self.idle_sprite_sheet = pygame.image.load("Idle.png").convert_alpha()
+        self.punch_sprite_sheet = pygame.image.load("Attack.png").convert_alpha()
+        self.fire_image = pygame.image.load("fire.png").convert_alpha()
+        
+        # Create sprite groups
+        self.all_sprites = pygame.sprite.Group()
+        self.fireballs = pygame.sprite.Group()
+        
+        # Create player and set its sprite group
+        self.player = Player(self.walk_sprite_sheet, self.idle_sprite_sheet, self.punch_sprite_sheet)
+        self.player.all_sprites = self.all_sprites
+        self.all_sprites.add(self.player)
 
-    # Screen dimensions
-    WIDTH, HEIGHT = 800, 600
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Matrix Jump Game")
+        # Initialize ability system
+        self.ability_system = MatrixAbilitySystem(self.screen)
+        
+        # Game state
+        self.paused = False
 
-    # Colors
-    BLACK = (0, 0, 0)
-
-    # Load images
-    player_image = pygame.Surface((30, 30))
-    player_image.fill((255, 0, 0))  # Red square
-    platform_image = pygame.Surface((80, 10))
-    platform_image.fill((255, 255, 255))  # White platform
-
-    # Matrix background effect
-    matrix_rain = MatrixRain(WIDTH, HEIGHT)
-
-    # Define Player Class
-    class Player(pygame.sprite.Sprite):
-        def __init__(self):
-            super().__init__()
-            self.image = player_image
-            self.rect = self.image.get_rect(center=(WIDTH // 2, HEIGHT - 50))
-            self.vel_x = 5
-            self.vel_y = 0
-            self.gravity = 0.5
-            self.jump_strength = 12
-            self.on_ground = False
-
-        def update(self):
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_LEFT]:
-                self.rect.x -= self.vel_x
-            if keys[pygame.K_RIGHT]:
-                self.rect.x += self.vel_x
-            if keys[pygame.K_SPACE] and self.on_ground:
-                self.vel_y = -self.jump_strength
-                self.on_ground = False
-
-            self.vel_y += self.gravity
-            self.rect.y += self.vel_y
-
-            if self.rect.bottom > HEIGHT:
-                self.rect.bottom = HEIGHT
-                self.vel_y = 0
-                self.on_ground = True
-
-    # Define Platform Class
-    class Platform(pygame.sprite.Sprite):
-        def __init__(self, x, y, speed_x, speed_y):
-            super().__init__()
-            self.image = platform_image
-            self.rect = self.image.get_rect(topleft=(x, y))
-            self.speed_x = speed_x
-            self.speed_y = speed_y
-
-        def update(self):
-            self.rect.x += self.speed_x
-            self.rect.y += self.speed_y
-            if self.rect.left <= 0 or self.rect.right >= WIDTH:
-                self.speed_x *= -1
-            if self.rect.top <= 0 or self.rect.bottom >= HEIGHT:
-                self.speed_y *= -1
-
-    # Create sprite groups
-    all_sprites = pygame.sprite.Group()
-    platforms = pygame.sprite.Group()
-
-    # Create player
-    player = Player()
-    all_sprites.add(player)
-
-    # Create platforms
-    for _ in range(5):
-        x = random.randint(0, WIDTH - 80)
-        y = random.randint(HEIGHT // 2, HEIGHT - 50)
-        speed_x = random.choice([-2, 2])
-        speed_y = random.choice([-2, 2])
-        platform = Platform(x, y, speed_x, speed_y)
-        all_sprites.add(platform)
-        platforms.add(platform)
-
-    # Game loop
-    running = True
-    clock = pygame.time.Clock()
-
-    while running:
-        screen.fill(BLACK)
-
+    def handle_input(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                return False
 
-        # Draw Matrix effect first (background)
-        matrix_rain.draw(screen)
+            if self.ability_system.selection_active:
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    selected_ability = self.ability_system.handle_selection(pygame.mouse.get_pos())
+                    if selected_ability:
+                        print(f"Unlocked: {selected_ability}")
+                continue
 
-        # Update sprites
-        all_sprites.update()
+            if event.type == pygame.MOUSEBUTTONDOWN and self.ability_system.abilities['fireball'].unlocked:
+                mouse_pos = pygame.mouse.get_pos()
+                fireball = Fireball(self.player.rect.center, mouse_pos, self.fire_image)
+                self.fireballs.add(fireball)
+                self.all_sprites.add(fireball)
+                self.player.punch()
 
-        # Collision detection
-        player.on_ground = False
-        if pygame.sprite.spritecollide(player, platforms, False):
-            player.vel_y = 0
-            player.on_ground = True
-            player.rect.y -= 1
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_p and self.ability_system.abilities['doppelganger'].unlocked:
+                    self.player.create_doppelganger()
+                elif event.key == pygame.K_t and self.ability_system.abilities['teleport'].unlocked:
+                    mouse_pos = pygame.mouse.get_pos()
+                    self.player.trigger_teleport(mouse_pos)
 
-        # Draw sprites
-        all_sprites.draw(screen)
+        return True
 
-        pygame.display.flip()
-        clock.tick(30)
+    def run(self):
+        running = True
+        while running:
+            # Check for ability unlocks
+            if self.ability_system.check_unlock_time():
+                self.paused = True
 
-    pygame.quit()
+            # Handle input
+            running = self.handle_input()
+
+            # Update game state if not paused
+            if not self.ability_system.selection_active:
+                self.all_sprites.update()
+                self.player.teleport_distortions.update()
+
+            # Draw
+            self.screen.fill((0, 0, 0))
+            self.all_sprites.draw(self.screen)
+            self.player.teleport_distortions.draw(self.screen)
+
+            # Draw ability unlock screen if active
+            if self.ability_system.selection_active:
+                self.ability_system.draw_unlock_screen()
+
+            pygame.display.flip()
+            self.clock.tick(60)
+
+        pygame.quit()
 
 if __name__ == "__main__":
-    run_game()
+    game = Game()
+    game.run()
