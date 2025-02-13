@@ -13,17 +13,17 @@ class MatrixRain:
         self.speed = speed
         self.font = pygame.font.Font(None, font_size)
         
-        # Create raindrop columns
-        self.columns = [random.randint(-height, 0) for _ in range(width // font_size)]
+        # Create raindrop rows instead of columns
+        self.rows = [random.randint(-width, 0) for _ in range(height // font_size)]
     
     def draw(self, screen):
-        for i in range(len(self.columns)):
-            x = i * self.font_size
-            y = self.columns[i]
+        for i in range(len(self.rows)):
+            y = i * self.font_size
+            x = self.rows[i]
             text = self.font.render(str(random.choice([0, 1])), True, GREEN)
             screen.blit(text, (x, y))
-            self.columns[i] += self.speed
+            self.rows[i] += self.speed
             
-            # Reset column when reaching bottom
-            if self.columns[i] > self.height:
-                self.columns[i] = random.randint(-50, 0)
+            # Reset row when reaching right edge
+            if self.rows[i] > self.width:
+                self.rows[i] = random.randint(-50, 0)
