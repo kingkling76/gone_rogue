@@ -14,7 +14,7 @@ class Enemy(pygame.sprite.Sprite):
         try:
             # Randomly choose one of the enemy images
             chosen_image = random.choice(self.enemy_images)
-            self.image = pygame.image.load("gone_rogue\\assets\\" + str(chosen_image)).convert_alpha()
+            self.image = pygame.image.load("assets/" + str(chosen_image)).convert_alpha()
             # Scale the image to desired size
             self.image = pygame.transform.scale(self.image, (50, 50))  # Adjust size as needed
         except pygame.error:

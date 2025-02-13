@@ -9,7 +9,7 @@ class Platform(pygame.sprite.Sprite):
         # Load and scale the platform image
         try:
             # Try to load the platform image
-            self.image = pygame.image.load("gone_rogue\\assets\\server.png").convert_alpha()
+            self.image = pygame.image.load("assets/server.png").convert_alpha()
             # Scale the image to desired size
             self.image = pygame.transform.scale(self.image, (100, 20))  # Adjust size as needed
         except pygame.error:

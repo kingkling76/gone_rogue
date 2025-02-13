@@ -398,25 +398,30 @@ class Doppelganger(pygame.sprite.Sprite):
 class Fireball(pygame.sprite.Sprite):
     def __init__(self, start_pos, target_pos, image):
         super().__init__()
-        self.original_image = image
-        self.image = pygame.transform.scale(self.original_image, (20, 20))
+
+        self.original_image = image  # Keep the original image for later rotations
+        self.image = pygame.transform.scale(self.original_image, (20, 20))  # Scale the fireball down
         self.rect = self.image.get_rect(center=start_pos)
 
-        # Calculate direction and angle
+        # Calculate the direction vector to move the fireball
         dx = target_pos[0] - start_pos[0]
         dy = target_pos[1] - start_pos[1]
-        self.angle = math.degrees(math.atan2(-dy, dx))  # Negative dy for correct angle
-        
-        # Rotate image
-        self.image = pygame.transform.rotate(self.original_image, self.angle)
-        self.rect = self.image.get_rect(center=self.rect.center)
-        
-        # Calculate normalized direction vector
         distance = math.hypot(dx, dy)
+        
+        # Normalize the vector to have a magnitude of 1 and multiply by speed
         self.direction = (dx / distance, dy / distance)
-        self.speed = 10
+        self.speed = 10  # Speed of the fireball
+
+        # Calculate the angle for rotation
+        angle = math.degrees(math.atan2(dy, dx))
+        self.image = pygame.transform.rotate(self.image, -angle)  # Rotate the image
+        self.rect = self.image.get_rect(center=self.rect.center)  # Adjust the rect to match rotated image
 
     def update(self):
-        # Move the fireball
+        # Move the fireball in the direction of the mouse click
         self.rect.x += self.direction[0] * self.speed
         self.rect.y += self.direction[1] * self.speed
+
+        # Remove fireball if it goes off screen
+        if self.rect.right < 0 or self.rect.left > 800 or self.rect.bottom < 0 or self.rect.top > 600:
+            self.kill()

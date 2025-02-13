@@ -154,13 +154,15 @@ class MatrixAbilitySystem:
 
     def check_unlock_time(self):
         if self.next_unlock_index >= len(self.unlock_times):
-            return False
-            
+            return False  # No more abilities to unlock
+
         current_time = pygame.time.get_ticks() - self.game_start_time
         if current_time >= self.unlock_times[self.next_unlock_index]:
             self.selection_active = True
+            self.next_unlock_index += 1  # Move to next unlock
             return True
         return False
+
 
     def handle_selection(self, mouse_pos):
         if not self.selection_active:

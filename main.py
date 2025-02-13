@@ -29,10 +29,10 @@ class Game:
         
         # Load sprite sheets
         try:
-            self.walk_sprite_sheet = pygame.image.load(os.path.join("gone_rogue", "Walk.png")).convert_alpha()
-            self.idle_sprite_sheet = pygame.image.load(os.path.join("gone_rogue", "Idle.png")).convert_alpha()
-            self.punch_sprite_sheet = pygame.image.load(os.path.join("gone_rogue", "Attack.png")).convert_alpha()
-            self.fire_image = pygame.image.load(os.path.join("gone_rogue", "fire.png")).convert_alpha()
+            self.walk_sprite_sheet = pygame.image.load("Walk.png")
+            self.idle_sprite_sheet = pygame.image.load("Idle.png")
+            self.punch_sprite_sheet = pygame.image.load( "Attack.png")
+            self.fire_image = pygame.image.load("fire.png")
         except pygame.error as e:
             print(f"Error loading images: {e}")
             pygame.quit()
@@ -105,47 +105,33 @@ class Game:
         return True
 
     def handle_input(self):
-        """Handle all input events"""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
-            
-            if self.game_over:
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_RETURN:
-                        return self.init_game()
-                    elif event.key == pygame.K_ESCAPE:
-                        return False
-            else:
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        return False
-                    # Handle ability activations
-                    if event.key == pygame.K_p and self.ability_system.abilities['doppelganger'].unlocked:
-                        self.player.create_doppelganger()
-                    elif event.key == pygame.K_t and self.ability_system.abilities['teleport'].unlocked:
-                        mouse_pos = pygame.mouse.get_pos()
-                        self.player.trigger_teleport(mouse_pos)
-                    elif event.key == pygame.K_s:
-                        self.player.activate_shield()
-                    elif event.key == pygame.K_d:
-                        self.player.digital_dash()
-                    elif event.key == pygame.K_c:
-                        self.player.code_burst()
-                        
+
+            if self.ability_system.selection_active:
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    if self.ability_system.selection_active:
-                        selected_ability = self.ability_system.handle_selection(pygame.mouse.get_pos())
-                        if selected_ability:
-                            print(f"Unlocked: {selected_ability}")
-                    elif self.ability_system.abilities['fireball'].unlocked:
-                        mouse_pos = pygame.mouse.get_pos()
-                        fireball = Fireball(self.player.rect.center, mouse_pos, self.fire_image)
-                        self.fireballs.add(fireball)
-                        self.all_sprites.add(fireball)
-                        self.player.punch()
-        
+                    selected_ability = self.ability_system.handle_selection(pygame.mouse.get_pos())
+                    if selected_ability:
+                        print(f"Unlocked: {selected_ability}")
+                continue
+
+            if event.type == pygame.MOUSEBUTTONDOWN and self.ability_system.abilities['fireball'].unlocked:
+                mouse_pos = pygame.mouse.get_pos()
+                fireball = Fireball(self.player.rect.center, mouse_pos, self.fire_image)
+                self.fireballs.add(fireball)
+                self.all_sprites.add(fireball)
+                self.player.punch()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_p and self.ability_system.abilities['doppelganger'].unlocked:
+                    self.player.create_doppelganger()
+                elif event.key == pygame.K_t and self.ability_system.abilities['teleport'].unlocked:
+                    mouse_pos = pygame.mouse.get_pos()
+                    self.player.trigger_teleport(mouse_pos)
+
         return True
+
 
     def spawn_enemies(self):
         """Handle enemy spawning"""
@@ -176,7 +162,7 @@ class Game:
             
             # Check for ability unlocks
             if self.ability_system.check_unlock_time():
-                self.paused = True
+                self.paused = False
                 
             # Update all sprites if not paused
             if not self.ability_system.selection_active:
@@ -193,7 +179,7 @@ class Game:
                 # Check enemy collisions
                 if pygame.sprite.spritecollide(self.player, self.enemies, False):
                     if not self.player.shield_active:
-                        self.game_over = True
+                        self.game_over = False
                     
                 # Check fireball hits on enemies
                 for fireball in self.fireballs:
