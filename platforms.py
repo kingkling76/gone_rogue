@@ -1,3 +1,4 @@
+# platforms.py
 import pygame
 import random
 import os
@@ -36,3 +37,11 @@ class Platform(pygame.sprite.Sprite):
     def update(self):
         # Move horizontally
         self.rect.x += self.speed
+
+class StartPlatform(Platform):
+    def __init__(self, screen_width):
+        super().__init__(screen_width)
+        self.rect.centerx = screen_width // 2
+        self.rect.y = 500  # Position slightly higher
+        self.speed = 0
+        self.has_jumped = False
