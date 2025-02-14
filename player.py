@@ -69,6 +69,12 @@ class Player(pygame.sprite.Sprite):
         self.controlled_enemy = None
         self.control_duration = 5000
         self.control_start_time = 0
+
+        #for health
+        self.max_health = 100
+        self.current_health = 100
+
+
         
         # Special effects groups
         self.teleport_effects = pygame.sprite.Group()
