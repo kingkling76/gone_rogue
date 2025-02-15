@@ -10,6 +10,11 @@ from platforms import Platform, StartPlatform  # Updated import
 from startscreen import StartupScreen
 from player import Player, Fireball
 from upgrade import MatrixAbilitySystem
+from pause import PauseMenu
+
+
+import pygame
+
 
 class StartPlatform(Platform):
     def __init__(self, screen_width):
@@ -108,6 +113,12 @@ class Game:
         self.fireball_bar_y = 40
         self.teleport_bar_x = 20
         self.teleport_bar_y = 70
+        self.menu_font = pygame.font.Font(None, 36)  # None uses default system font
+        self.menu = PauseMenu(self.screen,self.menu_font)  # Create menu instance
+        self.paused = False
+        self.game_over = False
+
+        
         
 
     def init_game(self):
@@ -151,6 +162,20 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
+            
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_m:
+                self.paused = not self.paused
+                self.menu.active =True
+
+            if self.paused:
+                selected_option = self.menu.handle_event(event)
+                if selected_option == "Resume":
+                    self.paused = False
+                elif selected_option == "Restart":
+                    self.init_game()
+                    self.paused = False
+                elif selected_option == "Quit":
+                    return False  # Skip further input if pause
 
             if self.ability_system.selection_active:
                 if event.type == pygame.MOUSEBUTTONDOWN:
@@ -214,6 +239,10 @@ class Game:
 
             # Handle ability recharges
             current_time = time.time()
+            if self.paused:
+                self.menu.draw()  # Draw the pause menu
+                pygame.display.flip()
+                return  # Skip game updates if paused
 
             # Recharge fireball ability
             if self.fireball_charges < 3:
@@ -458,6 +487,8 @@ class Game:
             font = pygame.font.Font(None, 36)
             score_text = font.render(f'Score: {self.score}', True, (0, 255, 0))
             self.screen.blit(score_text, (10, 40))  # Adjusted position to avoid overlap with the health bar
+            if self.paused:
+                self.menu.draw()
             
             if self.ability_system.selection_active:
                 self.ability_system.draw_unlock_screen()
