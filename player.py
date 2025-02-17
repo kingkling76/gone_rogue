@@ -40,39 +40,13 @@ class Player(pygame.sprite.Sprite):
         self.teleport_move_speed = 5
         self.teleport_progress = 0
         self.teleport_distortions = pygame.sprite.Group()
-        
-        # Special abilities
-        self.time_slow_active = False
-        self.time_slow_factor = 0.3
-        self.time_slow_duration = 5000
-        self.time_slow_start = 0
-        
-        self.matrix_vision_active = False
-        self.matrix_vision_duration = 8000
-        self.matrix_vision_start = 0
-        
-        self.wall_running = False
-        self.wall_run_timer = 0
-        self.wall_run_duration = 2000
-        
-        self.shield_active = False
-        self.shield_health = 100
-        self.shield_regen_rate = 0.5
-        
-        self.last_burst_time = 0
-        self.burst_cooldown = 3000
-        
-        self.dash_distance = 200
-        self.dash_cooldown = 1000
-        self.last_dash_time = 0
-        
-        self.controlled_enemy = None
-        self.control_duration = 5000
-        self.control_start_time = 0
 
         #for health
         self.max_health = 100
         self.current_health = 100
+
+        self.invincible = False  # Prevent multiple hits instantly
+        self.invincible_timer = 0
 
 
         
@@ -84,6 +58,11 @@ class Player(pygame.sprite.Sprite):
         self.all_sprites = None
 
         self.on_platform = False
+    
+    def take_damage(self):
+        self.current_health = self.current_health -10
+        self.invincible = True  # Activate temporary invincibility
+        self.invincible_timer = pygame.time.get_ticks() 
 
 
     def load_frames(self, sprite_sheet, num_frames):
@@ -96,6 +75,8 @@ class Player(pygame.sprite.Sprite):
         return frames
 
     def update(self):
+        if self.invincible and pygame.time.get_ticks() - self.invincible_timer > 1000:
+            self.invincible = False
         if self.is_teleporting:
             self.teleport()
         elif self.punching:
@@ -192,69 +173,9 @@ class Player(pygame.sprite.Sprite):
     def create_doppelganger(self):
         if not self.doppelganger and self.all_sprites is not None:
             self.doppelganger = Doppelganger(self.walk_frames)
-            self.doppelganger.rect.center = (self.rect.centerx + 100, self.rect.centery)
+            self.doppelganger.rect.center = (self.rect.centerx, self.rect.centery+3)
             self.all_sprites.add(self.doppelganger)
 
-    def activate_time_slow(self):
-        if not self.time_slow_active:
-            self.time_slow_active = True
-            self.time_slow_start = pygame.time.get_ticks()
-            for sprite in self.all_sprites:
-                if sprite != self:
-                    sprite.vel_x *= self.time_slow_factor
-                    sprite.vel_y *= self.time_slow_factor
-
-    def activate_matrix_vision(self):
-        self.matrix_vision_active = True
-        self.matrix_vision_start = pygame.time.get_ticks()
-
-    def wall_run(self):
-        if self.is_near_wall() and not self.wall_running:
-            self.wall_running = True
-            self.wall_run_timer = pygame.time.get_ticks()
-            self.gravity = 0
-
-    def activate_shield(self):
-        if not self.shield_active:
-            self.shield_active = True
-            self.shield_health = 100
-            shield_surface = self.create_shield_effect()
-            self.image.blit(shield_surface, (0, 0))
-
-    def create_shield_effect(self):
-        shield_radius = 40
-        shield_surface = pygame.Surface((shield_radius * 2, shield_radius * 2), pygame.SRCALPHA)
-        pygame.draw.circle(shield_surface, (0, 255, 0, 128), (shield_radius, shield_radius), shield_radius)
-        return shield_surface
-
-    def code_burst(self):
-        current_time = pygame.time.get_ticks()
-        if current_time - self.last_burst_time >= self.burst_cooldown:
-            self.last_burst_time = current_time
-            for effect in range(8):  # Create 8 burst particles
-                angle = effect * (360 / 8)
-                dx = math.cos(math.radians(angle)) * 5
-                dy = math.sin(math.radians(angle)) * 5
-                particle = TeleportEffect(self.rect.centerx, self.rect.centery)
-                particle.vel_x = dx
-                particle.vel_y = dy
-                self.teleport_effects.add(particle)
-
-    def digital_dash(self):
-        current_time = pygame.time.get_ticks()
-        if current_time - self.last_dash_time >= self.dash_cooldown:
-            self.last_dash_time = current_time
-            target_x = self.rect.x + (self.dash_distance if self.facing_right else -self.dash_distance)
-            for _ in range(5):  # Create dash effect particles
-                effect = TeleportEffect(self.rect.centerx, self.rect.centery)
-                self.teleport_effects.add(effect)
-            self.rect.x = target_x
-
-    def system_hack(self, target_enemy):
-        if not self.controlled_enemy:
-            self.controlled_enemy = target_enemy
-            self.control_start_time = pygame.time.get_ticks()
-            target_enemy.image.fill((0, 255, 0))  # Change color to indicate control
 
     def is_near_wall(self):
         # Simple wall detection - can be improved based on your game's needs
@@ -350,10 +271,34 @@ class Doppelganger(pygame.sprite.Sprite):
         self.on_ground = False
         self.moving = False
         self.facing_right = True
+
+        self.on_platform = False
         
         # Animation
         self.animation_speed = 0.2
         self.animation_timer = 0
+    
+    def handle_platform_collision(self, platforms):
+        """Handle collision with platforms"""
+        self.on_platform = False
+        for platform in platforms:
+            if (self.rect.bottom >= platform.rect.top and 
+                self.rect.bottom <= platform.rect.bottom and 
+                self.rect.right >= platform.rect.left and 
+                self.rect.left <= platform.rect.right and 
+                self.vel_y >= 0):
+                
+                self.rect.bottom = platform.rect.top
+                self.vel_y = 0
+                self.on_platform = True
+                
+                # Move with platform
+                self.rect.x += platform.speed
+                
+                # Handle starting platform
+                if isinstance(platform, StartPlatform) and not platform.has_jumped:
+                    platform.has_jumped = True
+                    platform.kill()  # Remove the platform
 
     def update(self):
         keys = pygame.key.get_pressed()

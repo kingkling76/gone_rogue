@@ -259,8 +259,8 @@ class Game:
                     self.teleport_last_used = current_time - (time_since_last_teleport - self.recharge_time)
             
             # Check for ability unlocks
-            if self.ability_system.check_unlock_time():
-                self.paused = False
+            if self.ability_system.check_unlock_score(self.score):
+                self.paused = True
                 
             # Update all sprites if not paused
             if not self.ability_system.selection_active:
@@ -275,9 +275,11 @@ class Game:
                     self.game_over = True
                 
                 # Check enemy collisions
-                if pygame.sprite.spritecollide(self.player, self.enemies, False):
-                    if not self.player.shield_active:
-                        self.game_over = False
+                if pygame.sprite.spritecollide(self.player, self.enemies, True):
+                    self.player.take_damage()
+                    print(self.player.current_health)
+                    if self.player.current_health < 1:
+                        self.game_over = True
                     
                 # Check fireball hits on enemies
                 for fireball in self.fireballs:
@@ -287,7 +289,7 @@ class Game:
                         self.score += 10  # Bonus points for hitting enemies
                 
                 # Update score
-                self.score += 1
+                self.score += 10
                 
             # Clean up off-screen sprites
             self.cleanup_sprites()
@@ -492,6 +494,8 @@ class Game:
             
             if self.ability_system.selection_active:
                 self.ability_system.draw_unlock_screen()
+            if not self.ability_system.selection_active:
+                self.paused = False
         else:
             self.draw_game_over()
 
@@ -555,5 +559,4 @@ class Game:
 
 if __name__ == "__main__":
     game = Game()
-    game.startup.show()
     game.run()

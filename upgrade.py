@@ -1,37 +1,20 @@
 import pygame
 import random
-class Ability:
-    def __init__(self, name, description, icon=None):
-        self.name = name
-        self.description = description
-        self.icon = icon
-        self.unlocked = False
-
 class MatrixAbilitySystem:
     def __init__(self, screen):
         self.screen = screen
         self.abilities = {
-            'fireball': Ability('Fireball.exe', 'Execute: Launch destructive data packet'),
-            'teleport': Ability('Teleport.sys', 'System: Override spatial coordinates'),
-            'doppelganger': Ability('Clone.dll', 'Process: Generate autonomous instance'),
-            # New abilities
-            'time_slow': Ability('TimeDilation.exe', 'System: Manipulate local time variables'),
-            'matrix_vision': Ability('Decrypt.sys', 'Execute: Reveal system vulnerabilities'),
-            'wall_run': Ability('GravityHack.dll', 'Override: Manipulate local gravity vectors'),
-            'data_shield': Ability('Firewall.sys', 'Defense: Generate damage nullification field'),
-            'code_burst': Ability('Surge.exe', 'Attack: Release omnidirectional energy pulse'),
-            'system_hack': Ability('Control.dll', 'Hack: Temporarily control nearby enemies'),
-            'digital_dash': Ability('Phase.sys', 'Movement: Quick forward data transmission'),
-            'recursive_clone': Ability('Recursion.exe', 'Generate: Create clone that can also clone')
+            'fireball': Ability('Fireball', 'Launch a destructive fireball at enemies'),
+            'teleport': Ability('Teleport', 'Instantly teleport to cursor position'),
+            'doppelganger': Ability('Doppelganger', 'Create a temporary clone')
         }
-        
-        # Timing for unlocks (in milliseconds)
-        self.unlock_times = [10000, 20000, 30000, 40000]
-        self.next_unlock_index = 0
         self.selection_active = False
-        self.game_start_time = pygame.time.get_ticks()
-        
-        # Load Matrix-style font (fallback to monospace system font if custom font not available)
+        self.current_score = 0
+        self.points_per_unlock = 3000
+        self.unlocks_available = 0
+        self.unlocks_used = 0
+
+
         try:
             self.font_large = pygame.font.Font("matrix_font.ttf", 48)
             self.font_medium = pygame.font.Font("matrix_font.ttf", 36)
@@ -40,8 +23,8 @@ class MatrixAbilitySystem:
             self.font_large = pygame.font.SysFont("couriernew", 48)
             self.font_medium = pygame.font.SysFont("couriernew", 36)
             self.font_small = pygame.font.SysFont("couriernew", 24)
-        
-        # Matrix color scheme
+
+
         self.COLOR_MATRIX_GREEN = (0, 255, 0)
         self.COLOR_DARK_GREEN = (0, 100, 0)
         self.COLOR_BLACK = (0, 0, 0)
@@ -55,6 +38,55 @@ class MatrixAbilitySystem:
         # Scanning line effect
         self.scan_line_pos = 0
         self.scan_line_speed = 5
+
+    def check_unlock_score(self, current_score):
+        """Check if new abilities should be unlocked based on score"""
+        self.current_score = current_score
+        potential_unlocks = current_score // self.points_per_unlock
+        new_unlocks = potential_unlocks - self.unlocks_used
+        
+        if new_unlocks > 0 and not self.selection_active:
+            self.unlocks_available = new_unlocks
+            self.selection_active = True
+            return True
+        return False
+
+    def handle_selection(self, mouse_pos):
+        """Handle ability selection"""
+        if not self.selection_active:
+            return None
+
+        screen_width = self.screen.get_width()
+        screen_height = self.screen.get_height()
+        
+        # Calculate ability card positions
+        card_width = 200
+        card_height = 100
+        spacing = 50
+        total_width = (len(self.abilities) * card_width) + ((len(self.abilities) - 1) * spacing)
+        start_x = (screen_width - total_width) // 2
+        y = (screen_height - card_height) // 2
+
+        for i, (ability_name, ability) in enumerate(self.abilities.items()):
+            if ability.unlocked:
+                continue
+
+            card_x = start_x + (i * (card_width + spacing))
+            card_rect = pygame.Rect(card_x, y, card_width, card_height)
+
+            if card_rect.collidepoint(mouse_pos):
+                ability.unlocked = True
+                self.unlocks_used += 1
+                
+                if self.unlocks_available > 1:
+                    self.unlocks_available -= 1
+                else:
+                    self.selection_active = False
+                    self.unlocks_available = 0
+                
+                return ability_name
+        return None
+    
 
     def init_rain_drops(self):
         for _ in range(50):  # Number of rain drops
@@ -79,106 +111,58 @@ class MatrixAbilitySystem:
             surface.blit(text, (drop['x'], drop['y']))
 
     def draw_unlock_screen(self):
-        if not self.selection_active:
-            return
+        """Draw the ability unlock screen"""
+        # Create semi-transparent overlay
+        overlay = pygame.Surface((self.screen.get_width(), self.screen.get_height()))
+        overlay.fill((0, 0, 0))
+        overlay.set_alpha(200)
+        self.screen.blit(overlay, (0, 0))
 
-        # Create main surface with alpha
-        main_surface = pygame.Surface((800, 600), pygame.SRCALPHA)
-        main_surface.fill((0, 0, 0, 230))
+        # Setup dimensions
+        screen_width = self.screen.get_width()
+        screen_height = self.screen.get_height()
+        card_width = 200
+        card_height = 100
+        spacing = 50
 
-        # Draw matrix rain
-        self.update_rain_drops()
-        self.draw_matrix_rain(main_surface)
+        # Draw header
+        font = pygame.font.Font(None, 36)
+        header_text = f"New Ability Unlock Available! (Score: {self.current_score})"
+        header = font.render(header_text, True, (0, 255, 0))
+        header_pos = ((screen_width - header.get_width()) // 2, screen_height // 4)
+        self.screen.blit(header, header_pos)
 
-        # Draw scanning line
-        scan_line = pygame.Surface((800, 2), pygame.SRCALPHA)
-        scan_line.fill((0, 255, 0, 100))
-        self.scan_line_pos = (self.scan_line_pos + self.scan_line_speed) % 600
-        main_surface.blit(scan_line, (0, self.scan_line_pos))
+        # Calculate total width of all cards
+        total_width = (len(self.abilities) * card_width) + ((len(self.abilities) - 1) * spacing)
+        start_x = (screen_width - total_width) // 2
+        y = (screen_height - card_height) // 2
 
-        # Draw title with "typing" effect
-        title = "SYSTEM UPGRADE AVAILABLE"
-        title_surface = self.font_large.render(title, True, self.COLOR_MATRIX_GREEN)
-        title_rect = title_surface.get_rect(center=(400, 100))
-        main_surface.blit(title_surface, title_rect)
+        # Draw ability cards
+        for i, (ability_name, ability) in enumerate(self.abilities.items()):
+            if ability.unlocked:
+                continue
 
-        # Draw available abilities
-        available_abilities = self.get_available_abilities()
-        button_height = 80
-        spacing = 20
-        start_y = 200
-
-        mouse_pos = pygame.mouse.get_pos()
-        
-        for i, ability in enumerate(available_abilities):
-            button_rect = pygame.Rect(200, start_y + i * (button_height + spacing), 400, button_height)
+            card_x = start_x + (i * (card_width + spacing))
             
-            # Check for hover
-            if button_rect.collidepoint(mouse_pos):
-                # Draw "selected" effect
-                pygame.draw.rect(main_surface, self.COLOR_DARK_GREEN, button_rect)
-                pygame.draw.rect(main_surface, self.COLOR_MATRIX_GREEN, button_rect, 2)
-                
-                # Draw glitch effect
-                if random.random() < 0.1:
-                    glitch_offset = random.randint(-2, 2)
-                    pygame.draw.rect(main_surface, self.COLOR_HIGHLIGHT, 
-                                   button_rect.inflate(glitch_offset, 0), 1)
-            else:
-                pygame.draw.rect(main_surface, self.COLOR_BLACK, button_rect)
-                pygame.draw.rect(main_surface, self.COLOR_DARK_GREEN, button_rect, 1)
+            # Draw card background with green border
+            pygame.draw.rect(self.screen, (0, 0, 0), (card_x, y, card_width, card_height))
+            pygame.draw.rect(self.screen, (0, 255, 0), (card_x, y, card_width, card_height), 2)
 
-            # Draw ability name with console-style prefix
-            name_text = self.font_medium.render(f"> {ability.name}", True, self.COLOR_MATRIX_GREEN)
-            name_rect = name_text.get_rect(topleft=(button_rect.left + 10, button_rect.top + 10))
-            main_surface.blit(name_text, name_rect)
+            # Draw ability name
+            name_text = font.render(ability.name, True, (0, 255, 0))
+            name_pos = (card_x + (card_width - name_text.get_width()) // 2, y + 20)
+            self.screen.blit(name_text, name_pos)
 
-            # Draw description with terminal-style formatting
-            desc_text = self.font_small.render(f"  [{ability.description}]", True, self.COLOR_MATRIX_GREEN)
-            desc_rect = desc_text.get_rect(topleft=(button_rect.left + 10, button_rect.top + 45))
-            main_surface.blit(desc_text, desc_rect)
+            # Draw ability description
+            desc_font = pygame.font.Font(None, 24)
+            desc_text = desc_font.render(ability.description, True, (0, 255, 0))
+            desc_pos = (card_x + (card_width - desc_text.get_width()) // 2, y + 60)
+            self.screen.blit(desc_text, desc_pos)
 
-        # Draw "Matrix code" in the background of each button
-        for x in range(200, 600, 20):
-            for y in range(200, 500, 20):
-                if random.random() < 0.1:
-                    char = random.choice(self.matrix_chars)
-                    char_surface = self.font_small.render(char, True, (0, 50, 0))
-                    main_surface.blit(char_surface, (x, y))
-
-        # Blit the main surface to the screen
-        self.screen.blit(main_surface, (0, 0))
-
-    def get_available_abilities(self):
-        return [ability for ability in self.abilities.values() if not ability.unlocked]
-
-    def check_unlock_time(self):
-        if self.next_unlock_index >= len(self.unlock_times):
-            return False  # No more abilities to unlock
-
-        current_time = pygame.time.get_ticks() - self.game_start_time
-        if current_time >= self.unlock_times[self.next_unlock_index]:
-            self.selection_active = True
-            self.next_unlock_index += 1  # Move to next unlock
-            return True
-        return False
+class Ability:
+    def __init__(self, name, description):
+        self.name = name
+        self.description = description
+        self.unlocked = False
 
 
-    def handle_selection(self, mouse_pos):
-        if not self.selection_active:
-            return None
-
-        available_abilities = self.get_available_abilities()
-        button_height = 80
-        spacing = 20
-        start_y = 200
-
-        for i, ability in enumerate(available_abilities):
-            button_rect = pygame.Rect(200, start_y + i * (button_height + spacing), 400, button_height)
-            if button_rect.collidepoint(mouse_pos):
-                ability.unlocked = True
-                self.selection_active = False
-                self.next_unlock_index += 1
-                return ability.name
-        
-        return None

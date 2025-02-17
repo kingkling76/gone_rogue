@@ -7,6 +7,7 @@ import pygame
 import json
 import os
 import time
+import random
 
 class StartupScreen:
     def __init__(self, screen, width, height):
@@ -14,9 +15,18 @@ class StartupScreen:
         self.width = width
         self.height = height
         self.font = pygame.font.Font(None, 32)
+        self.title_font = pygame.font.Font(None, 64)
         self.GREEN = (0, 255, 0)
+        self.BRIGHT_GREEN = (50, 255, 50)
+        self.DARK_GREEN = (0, 100, 0)
         self.BLACK = (0, 0, 0)
+        self.BLUE = (0, 255, 255)
         self.HOVER_GREEN = (0, 200, 0)
+        
+        # Matrix rain effect settings
+        self.matrix_chars = [chr(i) for i in range(33, 127)]
+        self.matrix_streams = []
+        self.setup_matrix_effect()
         
         self.menu_options = ["Play", "About", "Quit"]
         self.selected_option = None
@@ -27,12 +37,7 @@ class StartupScreen:
         ]
         
         self.intro_sequences = [
-            ["A game by", "Your Name Here"],
-            ["In the year 2099", "The digital realm became reality"],
-            ["Mega-corporations control the data streams", "Power flows through their networks"],
-            ["But in the shadows...", "A lone hacker rises"],
-            ["Armed with nothing but skill", "You must breach their systems"],
-            ["Jump through the Matrix", "Collect the forbidden data"],
+            ["A game by", "Kling Huru inc."],
             ["Survive...", "And become legend"]
         ]
         
@@ -40,6 +45,162 @@ class StartupScreen:
         self.start_y = self.height * 0.15
         
         self.highscores = self.load_highscores()
+        
+        # Scanline effect
+        self.scanline = pygame.Surface((width, 2))
+        self.scanline.fill((0, 255, 0))
+        self.scanline.set_alpha(30)
+        
+        # Glitch effect
+        self.glitch_timer = 0
+        self.glitch_interval = 30
+        self.glitch_offset = 0
+
+    def setup_matrix_effect(self):
+        for x in range(0, self.width, 20):
+            speed = random.randint(5, 15)
+            y = random.randint(-100, 0)
+            self.matrix_streams.append({'x': x, 'y': y, 'speed': speed})
+
+    def draw_matrix_effect(self):
+        for stream in self.matrix_streams:
+            char = random.choice(self.matrix_chars)
+            color = (0, random.randint(50, 150), 0)
+            text = self.font.render(char, True, color)
+            self.screen.blit(text, (stream['x'], stream['y']))
+            stream['y'] += stream['speed']
+            
+            if stream['y'] > self.height:
+                stream['y'] = random.randint(-100, 0)
+
+    def draw_scanlines(self):
+        for y in range(0, self.height, 4):
+            self.screen.blit(self.scanline, (0, y))
+
+    def apply_glitch_effect(self, surface):
+        if random.random() < 0.05:  # 5% chance of glitch
+            self.glitch_offset = random.randint(-5, 5)
+        else:
+            self.glitch_offset = 0
+            
+        glitched = surface.copy()
+        if self.glitch_offset != 0:
+            glitched.scroll(self.glitch_offset, 0)
+        return glitched
+
+    def draw_menu(self):
+        # Draw matrix effect in background
+        self.draw_matrix_effect()
+        
+        menu_start_y = self.height * 0.4
+        mouse_pos = pygame.mouse.get_pos()
+        
+        for i, option in enumerate(self.menu_options):
+            option_rect = pygame.Rect(0, 0, 200, 40)
+            option_rect.centerx = self.width // 2
+            option_rect.centery = menu_start_y + (i * 60)
+            
+            # Cyberpunk-style menu animation
+            hover = option_rect.collidepoint(mouse_pos)
+            color = self.BRIGHT_GREEN if hover else self.GREEN
+            
+            # Draw glowing rectangle
+            if hover:
+                glow_rect = option_rect.inflate(20, 20)
+                pygame.draw.rect(self.screen, self.DARK_GREEN, glow_rect)
+            
+            # Draw the option with glitch effect
+            text_surface = self.font.render(option, True, color)
+            text_rect = text_surface.get_rect(center=option_rect.center)
+            
+            if hover:
+                text_surface = self.apply_glitch_effect(text_surface)
+            
+            # Draw cyberpunk-style border
+            pygame.draw.rect(self.screen, color, option_rect, 2)
+            
+            # Draw corner accents
+            accent_size = 10
+            for corner in [(0, 0), (option_rect.width, 0), 
+                          (0, option_rect.height), (option_rect.width, option_rect.height)]:
+                pygame.draw.line(self.screen, self.BLUE, 
+                               (option_rect.left + corner[0], option_rect.top + corner[1]),
+                               (option_rect.left + corner[0] + (-accent_size if corner[0] == 0 else accent_size),
+                                option_rect.top + corner[1]), 2)
+                pygame.draw.line(self.screen, self.BLUE,
+                               (option_rect.left + corner[0], option_rect.top + corner[1]),
+                               (option_rect.left + corner[0],
+                                option_rect.top + corner[1] + (-accent_size if corner[1] == 0 else accent_size)), 2)
+            
+            self.screen.blit(text_surface, text_rect)
+            
+            if option_rect.collidepoint(mouse_pos):
+                self.selected_option = i
+
+        # Apply scanline effect
+        self.draw_scanlines()
+
+    def show_about(self):
+        about_text = [
+            "Matrix Jump",
+            "A cyberpunk platformer game",
+            "Navigate through the digital realm",
+            "collecting data fragments and avoiding",
+            "security systems.",
+            "",
+            "Press ESC to return to menu"
+        ]
+        
+        done = False
+        glitch_counter = 0
+        
+        while not done:
+            self.screen.fill(self.BLACK)
+            
+            # Draw matrix effect in background
+            self.draw_matrix_effect()
+            
+            # Create a semi-transparent overlay
+            overlay = pygame.Surface((self.width, self.height))
+            overlay.fill(self.BLACK)
+            overlay.set_alpha(200)
+            self.screen.blit(overlay, (0, 0))
+            
+            for i, line in enumerate(about_text):
+                text_surface = self.font.render(line, True, self.GREEN)
+                
+                # Apply glitch effect randomly
+                glitch_counter += 1
+                if glitch_counter % 60 == 0 and random.random() < 0.3:
+                    text_surface = self.apply_glitch_effect(text_surface)
+                
+                text_rect = text_surface.get_rect(center=(self.width//2, self.start_y + i * self.line_height))
+                
+                # Draw text glow
+                glow_surface = self.font.render(line, True, self.DARK_GREEN)
+                glow_rect = glow_surface.get_rect(center=(self.width//2 + 2, self.start_y + i * self.line_height + 2))
+                self.screen.blit(glow_surface, glow_rect)
+                
+                self.screen.blit(text_surface, text_rect)
+            
+            # Draw decorative lines
+            pygame.draw.line(self.screen, self.BLUE, (50, 50), (self.width - 50, 50), 2)
+            pygame.draw.line(self.screen, self.BLUE, (50, self.height - 50), 
+                           (self.width - 50, self.height - 50), 2)
+            
+            # Apply scanline effect
+            self.draw_scanlines()
+            
+            pygame.display.flip()
+            
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return None
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        done = True
+                        
+        return self.show()
 
     def fade_text(self, lines, fade_in_time=2.0, display_time=2.0, fade_out_time=2.0):
         clock = pygame.time.Clock()
@@ -171,30 +332,38 @@ class StartupScreen:
             
             clock.tick(60)
     
-    def draw_menu(self):
-        menu_start_y = self.height * 0.4
-        mouse_pos = pygame.mouse.get_pos()
+
+    def show_menu(self):
+        running = True
+        clock = pygame.time.Clock()
         
-        for i, option in enumerate(self.menu_options):
-            option_rect = pygame.Rect(0, 0, 200, 40)
-            option_rect.centerx = self.width // 2
-            option_rect.centery = menu_start_y + (i * 60)
+        while running:
+            self.screen.fill(self.BLACK)
             
-            # Check if mouse is hovering over option
-            color = self.HOVER_GREEN if option_rect.collidepoint(mouse_pos) else self.GREEN
+            # Draw title
+            title_surface = self.font.render("Matrix Jump", True, self.GREEN)
+            title_rect = title_surface.get_rect(center=(self.width//2, self.height * 0.2))
+            self.screen.blit(title_surface, title_rect)
             
-            # Draw the option
-            text_surface = self.font.render(option, True, color)
-            text_rect = text_surface.get_rect(center=option_rect.center)
+            # Draw menu
+            self.draw_menu()
             
-            # Draw a rectangle around the option
-            pygame.draw.rect(self.screen, color, option_rect, 2)
-            self.screen.blit(text_surface, text_rect)
+            pygame.display.flip()
             
-            # Update selected option based on mouse position
-            if option_rect.collidepoint(mouse_pos):
-                self.selected_option = i
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return None
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:  # Left click
+                        result = self.handle_menu_click()
+                        if result == "quit":
+                            return None
+                        elif result is not None:
+                            return result
+            
+            clock.tick(60)
     
+
     def handle_menu_click(self):
         if self.selected_option is not None:
             if self.menu_options[self.selected_option] == "Play":
@@ -205,36 +374,6 @@ class StartupScreen:
                 return "quit"
         return None
     
-    def show_about(self):
-        about_text = [
-            "Matrix Jump",
-            "A cyberpunk platformer game",
-            "Navigate through the digital realm",
-            "collecting data fragments and avoiding",
-            "security systems.",
-            "",
-            "Press ESC to return to menu"
-        ]
-        
-        done = False
-        while not done:
-            self.screen.fill(self.BLACK)
-            
-            for i, line in enumerate(about_text):
-                text_surface = self.font.render(line, True, self.GREEN)
-                text_rect = text_surface.get_rect(center=(self.width//2, self.start_y + i * self.line_height))
-                self.screen.blit(text_surface, text_rect)
-            
-            pygame.display.flip()
-            
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    return None
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        done = True
-                        
-        return self.show()
     
     def load_highscores(self):
         try:
@@ -332,35 +471,7 @@ class StartupScreen:
         
         return self.get_player_name(background)
     
-    def show(self):
-        running = True
-        clock = pygame.time.Clock()
-        
-        while running:
-            self.screen.fill(self.BLACK)
-            
-            # Draw title
-            title_surface = self.font.render("Matrix Jump", True, self.GREEN)
-            title_rect = title_surface.get_rect(center=(self.width//2, self.height * 0.2))
-            self.screen.blit(title_surface, title_rect)
-            
-            # Draw menu
-            self.draw_menu()
-            
-            pygame.display.flip()
-            
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    return None
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == 1:  # Left click
-                        result = self.handle_menu_click()
-                        if result == "quit":
-                            return None
-                        elif result is not None:
-                            return result
-            
-            clock.tick(60)
+
     
     def get_player_name(self, background):
         top_scores = self.get_top_scores(5)
