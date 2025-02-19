@@ -43,10 +43,11 @@ class Enemy(pygame.sprite.Sprite):
                 self.image = pygame.Surface((60, 60))
                 self.image.fill((0, 255, 0))
         
-        self.rect = self.image.get_rect()
+        self.rect = self.image.get_rect().inflate(-60, -60)
         self.speed = 3
         self.spawn_position(screen_width, screen_height)
         self.vel_x, self.vel_y = self.calculate_velocity(screen_width, screen_height)
+        
 
     def setup_animation_frames(self):
         try:

@@ -178,6 +178,7 @@ class Game:
                     return False  # Skip further input if pause
 
             if self.ability_system.selection_active:
+
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     selected_ability = self.ability_system.handle_selection(pygame.mouse.get_pos())
                     if selected_ability:
@@ -260,7 +261,10 @@ class Game:
             
             # Check for ability unlocks
             if self.ability_system.check_unlock_score(self.score):
-                self.paused = True
+                if self.ability_system.unlocks_available == 3:
+                    self.paused= False
+                else:
+                    self.paused = True
                 
             # Update all sprites if not paused
             if not self.ability_system.selection_active:
@@ -489,13 +493,12 @@ class Game:
             font = pygame.font.Font(None, 36)
             score_text = font.render(f'Score: {self.score}', True, (0, 255, 0))
             self.screen.blit(score_text, (10, 40))  # Adjusted position to avoid overlap with the health bar
-            if self.paused:
+            if self.paused and not self.ability_system.selection_active:
                 self.menu.draw()
             
             if self.ability_system.selection_active:
                 self.ability_system.draw_unlock_screen()
-            if not self.ability_system.selection_active:
-                self.paused = False
+
         else:
             self.draw_game_over()
 

@@ -13,6 +13,7 @@ class MatrixAbilitySystem:
         self.points_per_unlock = 3000
         self.unlocks_available = 0
         self.unlocks_used = 0
+        self.max_upgrades =3
 
 
         try:
@@ -45,7 +46,7 @@ class MatrixAbilitySystem:
         potential_unlocks = current_score // self.points_per_unlock
         new_unlocks = potential_unlocks - self.unlocks_used
         
-        if new_unlocks > 0 and not self.selection_active:
+        if new_unlocks > 0 and not self.selection_active and self.unlocks_used<3:
             self.unlocks_available = new_unlocks
             self.selection_active = True
             return True
@@ -73,6 +74,10 @@ class MatrixAbilitySystem:
 
             card_x = start_x + (i * (card_width + spacing))
             card_rect = pygame.Rect(card_x, y, card_width, card_height)
+
+            if self.unlocks_used==3:
+                return None
+
 
             if card_rect.collidepoint(mouse_pos):
                 ability.unlocked = True
