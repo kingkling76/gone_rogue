@@ -374,6 +374,31 @@ class StartupScreen:
                 return "quit"
         return None
     
+    def handle_unlock_screen_input(self, event):
+        """Handle mouse clicks on the ability unlock screen"""
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:  # Left mouse button
+            mouse_pos = pygame.mouse.get_pos()
+            
+            # Check if any button was clicked
+            for ability_name, button_data in self.ability_buttons.items():
+                if button_data['rect'].collidepoint(mouse_pos):
+                    # Button was clicked, unlock the ability
+                    ability = button_data['ability']
+                    ability.unlocked = True
+                    
+                    # Play a sound effect if available
+                    if hasattr(self, 'unlock_sound'):
+                        self.unlock_sound.play()
+                    
+                    # Maybe add a visual effect for the selected ability
+                    print(f"Ability {ability_name} unlocked!")
+                    
+                    # Return True to indicate a selection was made
+                    return True
+                    
+            # No button was clicked
+            return False
+    
     
     def load_highscores(self):
         try:

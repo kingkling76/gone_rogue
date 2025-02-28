@@ -1,0 +1,3 @@
+([('main',
+   '/Users/viktorkling/Desktop/sprint2/gone_rogue/dist/main',
+   'EXECUTABLE')],)
