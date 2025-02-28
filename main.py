@@ -55,6 +55,9 @@ def draw_health_bar(surface, current_health, max_health):
 class Game:
     def __init__(self):
         pygame.init()
+        pygame.mixer.init() 
+        pygame.mixer.music.load("musik.mp3")  # Load the music file
+        pygame.mixer.music.play(-1)
         self.WIDTH = 800
         self.HEIGHT = 600
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
